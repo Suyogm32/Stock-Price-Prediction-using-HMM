@@ -23,13 +23,17 @@ STOCKS=['apple.csv','cmcst.csv','google.csv','qcom.csv']
 #dirichlet_params = np.random.randint(1,50,NUM_STATES)
 labels = ['Close','Open','High','Low']
 likelihood_vect = np.empty([0,1])
+#Akaike information criterion (AIC)
 aic_vect = np.empty([0,1])
+
+#Bayesian Information Criterion (BIC). Derived from Bayesian probability for model selection
 bic_vect = np.empty([0,1])
 
-# Possible number of states in Markov Model
+# Possible number of states in Markov Model 
 STATE_SPACE = range(2,15)
 
 # Calculating Mean Absolute Percentage Error of predictions
+#𝑀𝐴𝑃𝐸=1/𝑁 ∑_(𝑖=1)^𝑚▒|𝑃𝑟𝑒𝑑𝑖𝑐𝑡𝑒𝑑(𝑖)−𝑇𝑟𝑢𝑒(𝑖)|/(𝑇𝑟𝑢𝑒(𝑖))
 def calc_mape(predicted_data, true_data):
     return np.divide(np.sum(np.divide(np.absolute(predicted_data - true_data), true_data), 0), true_data.shape[0])
 
@@ -52,7 +56,8 @@ for stock in STOCKS:
         likelihood_vect = np.vstack((likelihood_vect, model.score(dataset)))
         aic_vect = np.vstack((aic_vect, -2 * model.score(dataset) + 2 * num_params))
         bic_vect = np.vstack((bic_vect, -2 * model.score(dataset) +  num_params * np.log(dataset.shape[0])))
-    
+    print("AIC_Vext->\n",aic_vect);
+    print("BIC_Vext->\n",bic_vect);
     opt_states = np.argmin(bic_vect) + 2
     print('Optimum number of states are {}'.format(opt_states))
 
@@ -73,16 +78,20 @@ for stock in STOCKS:
 
         model.fit(np.flipud(train_dataset))
 
+        #Matrix of transition probabilities between states
         transmat_retune_prior = model.transmat_
+        #startprob_ is array of Initial state occupation distribution.
         startprob_retune_prior = model.startprob_
+        #means_ is array of Mean parameters for each state.
         means_retune_prior = model.means_
+        #covars ->	array of Covariance parameters for each state.
         covars_retune_prior = model.covars_
 
         if model.monitor_.iter == NUM_ITERS:
             print('Increase number of iterations')
             sys.exit(1)
-        #print('Model score : ', model.score(dataset))
-        #print('Dirichlet parameters : ',dirichlet_params)
+       # print('Model score : ', model.score(dataset))
+       # print('Dirichlet parameters : ',dirichlet_params_states)
 
         iters = 1;
         past_likelihood = []
@@ -94,7 +103,8 @@ for stock in STOCKS:
         predicted_change = train_dataset[likelihood_diff_idx,:] - train_dataset[likelihood_diff_idx + 1,:]
         predicted_stock_data = np.vstack((predicted_stock_data, dataset[idx + 1,:] + predicted_change))
     np.savetxt('{}_forecast.csv'.format(stock),predicted_stock_data,delimiter=',',fmt='%.2f')
-
+    print('Model score : ', model.score(dataset))
+    print('Dirichlet parameters : ',dirichlet_params_states)
     mape = calc_mape(predicted_stock_data, np.flipud(dataset[range(100),:]))
     print('MAPE for the stock {} is '.format(stock),mape)
 
